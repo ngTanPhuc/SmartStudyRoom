@@ -1,0 +1,16 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: "jdbc:mysql://localhost:3306/smart_study_room"
+    username: root
+    password: buiqui2005
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+jwt:
+  signerKey: "6ccda8decc38127a1a2d7b5665c6835645ea8db3900e4c3459698eb0b60f3313"
+  valid-duration: 36000 #seconds
+  refreshable-duration: 360000 #seconds

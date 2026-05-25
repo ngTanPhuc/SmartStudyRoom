@@ -1,0 +1,68 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+
+# Logs
+*.log
+logs/
+
+# Environment files and local secrets
+.env
+.env.*
+!.env.example
+application-local.yaml
+application-local.yml
+
+# Java / Spring Boot
+backend/target/
+backend/build/
+backend/.mvn/wrapper/maven-wrapper.jar
+!backend/**/src/main/**/target/
+!backend/**/src/test/**/target/
+!backend/**/src/main/**/build/
+!backend/**/src/test/**/build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Python virtual environments
+venv/
+.venv/
+env/
+.env/
+ai-service/venv/
+
+# Frontend
+node_modules/
+front-end/node_modules/
+front-end/dist/
+front-end/.vite/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Generated model/data artifacts
+*.tmp
+*.bak
+
+# IoT local runtime files
+iot-edge/*.log
+iot-edge/*.tmp

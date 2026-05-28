@@ -28,6 +28,7 @@ public class UserMapper {
                 .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .firstName(request.getFirstName())
+                .middleName(request.getMiddleName())
                 .lastName(request.getLastName())
                 .roles(roles)
                 .build();
@@ -39,6 +40,7 @@ public class UserMapper {
         if (request.getPhone() != null) user.setPhone(request.getPhone());
         if (request.getPassword() != null) user.setPassword(passwordEncoder.encode(request.getPassword()));
         if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getMiddleName() != null) user.setMiddleName(request.getMiddleName());
         if (request.getLastName() != null) user.setLastName(request.getLastName());
         return user;
     }
@@ -48,6 +50,9 @@ public class UserMapper {
                 .id(user.getId())
                 .email(user.getEmail())
                 .phone(user.getPhone())
+                .firstName(user.getFirstName())
+                .middleName(user.getMiddleName())
+                .lastName(user.getLastName())
                 .fullName(buildFullName(user))
                 .createdAt(user.getCreatedAt())
                 .lastUpdated(user.getLastUpdated())
@@ -58,7 +63,8 @@ public class UserMapper {
 
     private String buildFullName(User user) {
         String lastName = user.getLastName() == null ? "" : user.getLastName().trim();
+        String middleName = user.getMiddleName() == null ? "" : user.getMiddleName().trim();
         String firstName = user.getFirstName() == null ? "" : user.getFirstName().trim();
-        return (lastName + " " + firstName).trim();
+        return String.join(" ", lastName, middleName, firstName).replaceAll("\\s+", " ").trim();
     }
 }

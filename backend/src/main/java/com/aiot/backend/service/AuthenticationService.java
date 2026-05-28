@@ -29,6 +29,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.text.ParseException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Optional;
 import java.util.StringJoiner;
@@ -64,6 +65,9 @@ public class AuthenticationService {
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword()))
             throw new WebException(ErrorCode.UNAUTHORIZED);
+
+        user.setLastLogin(LocalDateTime.now());
+        userRepository.save(user);
 
         String accessToken  = generateToken(user);
         return AuthenticationResponse.builder()

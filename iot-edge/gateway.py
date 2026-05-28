@@ -1,6 +1,11 @@
 import websocket
 import json
-import serial
+try:
+    import serial
+except ImportError as exc:
+    raise SystemExit(
+        "Missing dependency: pyserial. Install it with: python -m pip install pyserial"
+    ) from exc
 import threading
 import time
 import requests
@@ -16,6 +21,12 @@ USER_ID = os.getenv("SMART_ROOM_USER_ID", "c7ab5c64-cee4-4ef6-9b2e-1f71824c0920"
 BACKEND_TOKEN = os.getenv("SMART_ROOM_BACKEND_TOKEN", "")
 
 # ===== SERIAL =====
+if not hasattr(serial, "Serial"):
+    raise SystemExit(
+        "Invalid dependency: package 'serial' is installed instead of 'pyserial'. "
+        "Run: python -m pip uninstall serial -y; python -m pip install pyserial"
+    )
+
 ser = serial.Serial(SERIAL_PORT, BAUDRATE, timeout=1)
 
 # ===== SENSOR PARSER =====

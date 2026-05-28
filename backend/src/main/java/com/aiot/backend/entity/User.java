@@ -34,6 +34,7 @@ public class User {
     @Column(nullable = false)
     String password;
     String firstName;
+    String middleName;
     String lastName;
     @CreationTimestamp
     LocalDateTime createdAt;

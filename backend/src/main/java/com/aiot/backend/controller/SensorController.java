@@ -7,8 +7,10 @@ import com.aiot.backend.service.SensorService;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -43,4 +45,17 @@ public class SensorController {
                 .result(response)
                 .build();
     }
+
+    @DeleteMapping("/{sensorId}/data")
+    public ApiResponse<Integer> deleteSensorData(
+            @PathVariable("userId") String userId,
+            @PathVariable("sensorId") String sensorId,
+            @RequestParam(value = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(value = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+        int deletedCount = sensorService.deleteSensorData(userId, sensorId, from, to);
+        return ApiResponse.<Integer>builder()
+                .result(deletedCount)
+                .build();
+    }
+
 }

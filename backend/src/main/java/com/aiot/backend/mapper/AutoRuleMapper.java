@@ -32,6 +32,7 @@ public class AutoRuleMapper {
                 .device(device)
                 .targetValue(request.getTargetValue())
                 .lastTriggerAt(null)
+                .lastEvaluatedAt(null)
                 .coolDownSeconds(5)
                 .build();
         autoRule.setDescription(buildDescription(autoRule));

@@ -27,6 +27,8 @@ import java.util.List;
 @Service
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class SpeechInputService {
+    private static final double MIN_PREDICTION_CONFIDENCE = 0.7;
+
     CommandRepository commandRepository;
     CommandService commandService;
     SpeechInputRepository speechInputRepository;
@@ -81,12 +83,18 @@ public class SpeechInputService {
             throw new WebException(ErrorCode.ML_RESPONSE_INVALID);
         }
 
-        Intent intent = parseIntent(result.getPredictLabel());
+        User user = userService.getRawUser(userId);
+        SpeechInput speechInput = speechInputMapper.toEntity(request);
+        speechInput.setConfidence(result.getConfidence());
+        speechInput.setUser(user);
+
+        Intent intent = isLowConfidence(result) ? null : parseIntent(result.getPredictLabel());
         if (intent == null) {
-            throw new WebException(ErrorCode.ML_LOW_CONFIDENCE);
+            speechInput.setPredictLabel("UNKNOWN");
+            speechInputRepository.save(speechInput);
+            return speechInputMapper.toResponse(speechInput);
         }
 
-        User user = userService.getRawUser(userId);
         Device device = deviceRepository.findByUser_IdAndDeviceType(userId, intent.deviceType()).orElseThrow(
                 () -> new WebException(ErrorCode.DEVICE_NOT_FOUND)
         );
@@ -94,10 +102,7 @@ public class SpeechInputService {
         int oldValue = device.getIntensityLevel();
         int targetValue = resolveTargetValue(intent, oldValue);
 
-        SpeechInput speechInput = speechInputMapper.toEntity(request);
-        speechInput.setConfidence(result.getConfidence());
         speechInput.setPredictLabel(result.getPredictLabel());
-        speechInput.setUser(user);
         speechInput.setDevice(device);
         speechInput.setTargetValue(targetValue);
         speechInputRepository.save(speechInput);
@@ -118,6 +123,10 @@ public class SpeechInputService {
         commandService.sendCmdToGateway(command);
 
         return speechInputMapper.toResponse(speechInput);
+    }
+
+    private boolean isLowConfidence(SpeechInputResult result) {
+        return result.getConfidence() == null || result.getConfidence() < MIN_PREDICTION_CONFIDENCE;
     }
 
     private Intent parseIntent(String label) {

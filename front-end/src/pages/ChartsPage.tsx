@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, BarChart3 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -160,47 +160,59 @@ export const ChartsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
-              aria-label="Back to dashboard"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Biểu đồ dữ liệu
-            </h1>
+      <header className="border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="p-2.5 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-950 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+                aria-label="Quay lại bảng điều khiển"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+
+              <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-900 dark:text-indigo-300">
+                <BarChart3 className="w-6 h-6" />
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-indigo-700 dark:text-indigo-300">Phân tích cảm biến</p>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
+                  Biểu đồ dữ liệu
+                </h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Quan sát xu hướng nhiệt độ, độ ẩm và ánh sáng theo khoảng thời gian.
+                </p>
+              </div>
+            </div>
+
+            <div className="inline-flex w-full rounded-lg border border-slate-200 bg-slate-100 p-1 dark:border-slate-700 dark:bg-slate-800 lg:w-auto">
+              {(['1h', '6h', '24h', '7d'] as const).map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setTimeRange(range)}
+                  className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition-colors lg:flex-none ${
+                    timeRange === range
+                      ? 'bg-white text-indigo-700 shadow-sm dark:bg-slate-950 dark:text-indigo-300'
+                      : 'text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white'
+                  }`}
+                >
+                  {range === '1h' && '1 giờ'}
+                  {range === '6h' && '6 giờ'}
+                  {range === '24h' && '24 giờ'}
+                  {range === '7d' && '7 ngày'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Time Range Selector */}
-        <div className="mb-6 flex gap-2">
-          {(['1h', '6h', '24h', '7d'] as const).map((range) => (
-            <button
-              key={range}
-              onClick={() => setTimeRange(range)}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                timeRange === range
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-              }`}
-            >
-              {range === '1h' && '1 giờ'}
-              {range === '6h' && '6 giờ'}
-              {range === '24h' && '24 giờ'}
-              {range === '7d' && '7 ngày'}
-            </button>
-          ))}
-        </div>
-
         {/* Charts */}
         {loading && (
           <div className="mb-6 rounded-xl bg-white dark:bg-gray-800 shadow-lg p-4 text-sm text-gray-600 dark:text-gray-300">

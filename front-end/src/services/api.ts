@@ -40,7 +40,36 @@ interface BackendUser {
   id: string;
   email: string;
   phone?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
   fullName?: string;
+  createdAt?: string;
+  lastUpdated?: string;
+  lastLogin?: string;
+  roles?: string[];
+}
+
+export interface UserProfilePayload {
+  email?: string;
+  phone?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  password?: string;
+}
+
+export interface AdminUserSummary {
+  id: string;
+  email: string;
+  phone?: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
+  fullName?: string;
+  createdAt?: string;
+  lastUpdated?: string;
+  lastLogin?: string;
   roles?: string[];
 }
 
@@ -65,12 +94,54 @@ interface BackendDevice {
   intensityLevel: number;
 }
 
+export type AutoRuleOperator = 'EQ' | 'NEQ' | 'LT' | 'GT' | 'LE' | 'GE';
+
+export interface SensorSummary {
+  id: string;
+  sensorType: BackendSensor['sensorType'];
+  currentValue?: number;
+}
+
+export interface DeviceSummary {
+  id: string;
+  deviceType: BackendDevice['deviceType'];
+  intensityLevel: number;
+}
+
+export interface AutoRuleSummary {
+  id: string;
+  description: string;
+  active: boolean;
+  operator: AutoRuleOperator;
+  thresh: number;
+  sensorResponse: SensorSummary;
+  deviceResponse: DeviceSummary;
+  targetValue: number;
+}
+
+export interface AutoRulePayload {
+  sensorId: string;
+  deviceId: string;
+  operator: AutoRuleOperator;
+  thresh: number;
+  targetValue: number;
+}
+
+export interface AutoRuleUpdatePayload {
+  operator?: AutoRuleOperator;
+  thresh?: number;
+  targetValue?: number;
+  active?: boolean;
+}
+
 interface BackendCommand {
   id: string;
   commandType: 'MANUAL' | 'AUTO_RULE' | 'SPEECH';
   device: BackendDevice;
   previousIntensity: number;
   currentIntensity: number;
+  autoRuleId?: string | null;
+  speechInputId?: string | null;
   createdAt: string;
 }
 
@@ -144,15 +215,18 @@ const getStoredUser = () => {
 };
 
 const toFrontendUser = (user: BackendUser) => {
-  const names = (user.fullName || '').trim().split(/\s+/);
   return {
     id: user.id,
     email: user.email,
     phone: user.phone,
     fullName: user.fullName,
-    firstName: names.slice(0, -1).join(' ') || user.fullName || user.email,
-    lastName: names.slice(-1).join(' '),
+    firstName: user.firstName,
+    middleName: user.middleName,
+    lastName: user.lastName,
     username: user.email?.split('@')[0] || user.id,
+    createdAt: user.createdAt,
+    lastUpdated: user.lastUpdated,
+    lastLogin: user.lastLogin,
     roles: user.roles,
   };
 };
@@ -186,6 +260,32 @@ const fanIntensityToLevel = (intensity: number) => {
   if (intensity <= 33) return 1;
   if (intensity <= 66) return 2;
   return 3;
+};
+
+const describeCommandAction = (command: BackendCommand) => {
+  const previous = Number(command.previousIntensity || 0);
+  const current = Number(command.currentIntensity || 0);
+
+  if (command.device.deviceType === 'LIGHT') {
+    return current > 0 ? 'Bật' : 'Tắt';
+  }
+
+  const previousSpeed = fanIntensityToLevel(previous);
+  const currentSpeed = fanIntensityToLevel(current);
+
+  if (currentSpeed === 0) {
+    return 'Tắt';
+  }
+
+  if (previousSpeed === 0) {
+    return `Bật - tốc độ ${currentSpeed}`;
+  }
+
+  if (previousSpeed !== currentSpeed) {
+    return `Chỉnh tốc độ ${currentSpeed}`;
+  }
+
+  return `Đang bật - tốc độ ${currentSpeed}`;
 };
 
 const fanLevelToIntensity = (level: number) => {
@@ -232,6 +332,7 @@ export const authApi = {
       password: data.password,
       phone: data.phone,
       firstName: data.firstName,
+      middleName: data.middleName,
       lastName: data.lastName,
     });
 
@@ -249,6 +350,21 @@ export const authApi = {
 
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     localStorage.removeItem(STORAGE_KEYS.USER_DATA);
+  },
+
+  getMyInfo: async () => {
+    const user = toFrontendUser(unwrap(await api.get<ApiResponse<BackendUser>>('/users/my-info')));
+    localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+    return user;
+  },
+
+  updateProfile: async (payload: UserProfilePayload) => {
+    const currentUser = getStoredUser();
+    const user = toFrontendUser(
+      unwrap(await api.put<ApiResponse<BackendUser>>(`/users/${currentUser.id}`, payload))
+    );
+    localStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
+    return user;
   },
 };
 
@@ -294,6 +410,25 @@ export const feedApi = {
         value: Number(item.value),
       }))
       .slice(0, params.limit ?? data.length);
+  },
+
+  deleteHistory: async (params: { feed: string; from?: string; to?: string }): Promise<number> => {
+    const user = getStoredUser();
+    const sensorType = feedToSensorType(params.feed);
+    const sensors = unwrap(await api.get<ApiResponse<BackendSensor[]>>(`/users/${user.id}/sensors`));
+    const sensor = sensors.find((item) => item.sensorType === sensorType);
+    if (!sensor) {
+      throw new Error('Không tìm thấy cảm biến cần xóa dữ liệu');
+    }
+
+    return unwrap(
+      await api.delete<ApiResponse<number>>(`/users/${user.id}/sensors/${sensor.id}/data`, {
+        params: {
+          ...(params.from ? { from: params.from } : {}),
+          ...(params.to ? { to: params.to } : {}),
+        },
+      })
+    );
   },
 };
 
@@ -347,6 +482,52 @@ export const deviceApi = {
     );
     return devices.map(toDeviceStatus);
   },
+
+  getDeviceSummaries: async (): Promise<DeviceSummary[]> => {
+    const user = getStoredUser();
+    return unwrap(
+      await api.get<ApiResponse<DeviceSummary[]>>(API_ENDPOINTS.DEVICES_LIST(user.id))
+    );
+  },
+};
+
+/**
+ * Sensor APIs
+ */
+export const sensorApi = {
+  getSensors: async (): Promise<SensorSummary[]> => {
+    const user = getStoredUser();
+    return unwrap(await api.get<ApiResponse<SensorSummary[]>>(`/users/${user.id}/sensors`));
+  },
+};
+
+/**
+ * Auto Rule APIs
+ */
+export const autoRuleApi = {
+  getRules: async (): Promise<AutoRuleSummary[]> => {
+    const user = getStoredUser();
+    return unwrap(await api.get<ApiResponse<AutoRuleSummary[]>>(`/users/${user.id}/auto-rules`));
+  },
+
+  createRule: async (payload: AutoRulePayload): Promise<AutoRuleSummary> => {
+    const user = getStoredUser();
+    return unwrap(
+      await api.post<ApiResponse<AutoRuleSummary>>(`/users/${user.id}/auto-rules`, payload)
+    );
+  },
+
+  updateRule: async (ruleId: string, payload: AutoRuleUpdatePayload): Promise<AutoRuleSummary> => {
+    const user = getStoredUser();
+    return unwrap(
+      await api.put<ApiResponse<AutoRuleSummary>>(`/users/${user.id}/auto-rules/${ruleId}`, payload)
+    );
+  },
+
+  deleteRule: async (ruleId: string): Promise<void> => {
+    const user = getStoredUser();
+    await api.delete(`/users/${user.id}/auto-rules/${ruleId}`);
+  },
 };
 
 /**
@@ -360,6 +541,17 @@ export const speechApi = {
         `/users/${user.id}/speech-inputs/predict`,
         { rawtext }
       )
+    );
+  },
+
+  getHistory: async (): Promise<SpeechControlResult[]> => {
+    const user = getStoredUser();
+    const history = unwrap(
+      await api.get<ApiResponse<SpeechControlResult[]>>(`/users/${user.id}/speech-inputs`)
+    );
+
+    return [...history].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   },
 };
@@ -401,7 +593,8 @@ export const historyApi = {
       id: command.id,
       timestamp: command.createdAt,
       device: command.device.deviceType === 'FAN' ? 'Quạt' : 'Đèn',
-      action: `${command.previousIntensity} -> ${command.currentIntensity}`,
+      deviceType: command.device.deviceType === 'FAN' ? 'fan' : 'light',
+      action: describeCommandAction(command),
       status: 'success',
       triggeredBy:
         command.commandType === 'AUTO_RULE'
@@ -409,7 +602,26 @@ export const historyApi = {
           : command.commandType === 'SPEECH'
           ? 'voice'
           : 'manual',
+      autoRuleId: command.autoRuleId,
+      speechInputId: command.speechInputId,
     }));
+  },
+};
+
+/**
+ * Admin APIs
+ */
+export const adminApi = {
+  getUsers: async (): Promise<AdminUserSummary[]> => {
+    return unwrap(await api.get<ApiResponse<AdminUserSummary[]>>('/users'));
+  },
+
+  updateUser: async (userId: string, payload: UserProfilePayload): Promise<AdminUserSummary> => {
+    return unwrap(await api.put<ApiResponse<AdminUserSummary>>(`/users/${userId}`, payload));
+  },
+
+  deleteUser: async (userId: string): Promise<void> => {
+    await api.delete(`/users/${userId}`);
   },
 };
 

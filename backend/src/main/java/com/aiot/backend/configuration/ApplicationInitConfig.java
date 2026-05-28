@@ -26,8 +26,11 @@ import java.util.Set;
 @FieldDefaults(level= AccessLevel.PRIVATE, makeFinal = true)
 public class ApplicationInitConfig {
     private static final String TEST_USER_ID = "c7ab5c64-cee4-4ef6-9b2e-1f71824c0920";
-    private static final String TEST_USER_EMAIL = "nvan@gmail.com";
-    private static final String TEST_USER_PASSWORD = "123456";
+    private static final String TEST_USER_EMAIL = "nguyenvanan@gmail.com";
+    private static final String TEST_USER_PASSWORD = "nguyenvanan";
+    private static final String TEST_USER_PHONE = "0907111222333";
+    private static final String ADMIN_EMAIL = "admin@gmail.com";
+    private static final String ADMIN_PASSWORD = "admin";
 
     PasswordEncoder passwordEncoder;
     UserRepository userRepository;
@@ -38,19 +41,7 @@ public class ApplicationInitConfig {
     @Bean
     ApplicationRunner applicationRunner() {
         return args -> {
-            if (userRepository.findByEmail("admin@gmail.com").isEmpty()) {
-                String email = "admin@gmail.com";
-                String password = passwordEncoder.encode("admin");
-                HashSet<String> roles = new HashSet<>();
-                roles.add(Role.ADMIN.name());
-
-                User user = User.builder()
-                        .email(email)
-                        .password(password)
-                        .roles(roles)
-                        .build();
-                userRepository.save(user);
-            }
+            ensureAdminExists();
 
             ensureTestUserExists();
             User testUser = userRepository.findById(TEST_USER_ID)
@@ -61,8 +52,56 @@ public class ApplicationInitConfig {
         };
     }
 
+    private void ensureAdminExists() {
+        HashSet<String> roles = new HashSet<>();
+        roles.add(Role.ADMIN.name());
+
+        User admin = userRepository.findByEmail(ADMIN_EMAIL)
+                .orElseGet(() -> User.builder()
+                        .email(ADMIN_EMAIL)
+                        .roles(roles)
+                        .build());
+
+        admin.setPassword(passwordEncoder.encode(ADMIN_PASSWORD));
+        admin.setFirstName("admin");
+        admin.setMiddleName(null);
+        admin.setLastName(null);
+        admin.setRoles(roles);
+        userRepository.save(admin);
+
+        jdbcTemplate.update(
+                """
+                        UPDATE `user`
+                        SET created_at = COALESCE(created_at, CURRENT_TIMESTAMP)
+                        WHERE email = ?
+                        """,
+                ADMIN_EMAIL
+        );
+    }
+
     private void ensureTestUserExists() {
         if (userRepository.findById(TEST_USER_ID).isPresent()) {
+            jdbcTemplate.update(
+                    """
+                            UPDATE `user`
+                            SET email = ?,
+                                phone = ?,
+                                password = ?,
+                                first_name = ?,
+                                middle_name = ?,
+                                last_name = ?,
+                                created_at = COALESCE(created_at, CURRENT_TIMESTAMP)
+                            WHERE id = ?
+                            """,
+                    TEST_USER_EMAIL,
+                    TEST_USER_PHONE,
+                    passwordEncoder.encode(TEST_USER_PASSWORD),
+                    "An",
+                    "Văn",
+                    "Nguyễn",
+                    TEST_USER_ID
+            );
+            ensureUserRole(TEST_USER_ID, Role.USER.name());
             return;
         }
 
@@ -75,23 +114,44 @@ public class ApplicationInitConfig {
 
         jdbcTemplate.update(
                 """
-                        INSERT INTO `user` (id, email, password, first_name, last_name)
-                        VALUES (?, ?, ?, ?, ?)
+                        INSERT INTO `user` (id, email, phone, password, first_name, middle_name, last_name, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                         """,
                 TEST_USER_ID,
                 TEST_USER_EMAIL,
+                TEST_USER_PHONE,
                 passwordEncoder.encode(TEST_USER_PASSWORD),
                 "An",
-                "Nguyễn Văn"
+                "Văn",
+                "Nguyễn"
         );
+
+        ensureUserRole(TEST_USER_ID, Role.USER.name());
+    }
+
+    private void ensureUserRole(String userId, String role) {
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                        SELECT COUNT(*)
+                        FROM user_roles
+                        WHERE user_id = ? AND role = ?
+                        """,
+                Integer.class,
+                userId,
+                role
+        );
+
+        if (count != null && count > 0) {
+            return;
+        }
 
         jdbcTemplate.update(
                 """
                         INSERT INTO user_roles (user_id, role)
                         VALUES (?, ?)
                         """,
-                TEST_USER_ID,
-                Role.USER.name()
+                userId,
+                role
         );
     }
 

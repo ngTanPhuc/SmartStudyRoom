@@ -37,5 +37,6 @@ public class AutoRule {
     @Column(nullable = false)
     Integer targetValue;
     LocalDateTime lastTriggerAt;
+    LocalDateTime lastEvaluatedAt;
     Integer coolDownSeconds;
 }

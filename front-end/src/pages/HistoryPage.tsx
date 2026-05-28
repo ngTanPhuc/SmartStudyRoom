@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Filter, Download } from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink, Fan, Filter, History as HistoryIcon, Lightbulb, Power } from 'lucide-react';
 import { format } from 'date-fns';
 import { HistoryLog } from '@/types';
 import { historyApi } from '@/services/api';
+import { PaginationControls } from '@/components/common/PaginationControls';
 
 export const HistoryPage: React.FC = () => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<'all' | 'manual' | 'auto' | 'voice'>('all');
+  const [deviceFilter, setDeviceFilter] = useState<'all' | 'fan' | 'light'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'failed'>('all');
   const [logs, setLogs] = useState<HistoryLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -30,9 +34,17 @@ export const HistoryPage: React.FC = () => {
 
   const filteredLogs = logs.filter((log) => {
     if (filter !== 'all' && log.triggeredBy !== filter) return false;
+    if (deviceFilter !== 'all' && log.deviceType !== deviceFilter) return false;
     if (statusFilter !== 'all' && log.status !== statusFilter) return false;
     return true;
   });
+  const totalPages = Math.max(Math.ceil(filteredLogs.length / pageSize), 1);
+  const currentPage = Math.min(page, totalPages);
+  const pagedLogs = filteredLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, deviceFilter, statusFilter, pageSize]);
 
   const handleExport = () => {
     const csv = [
@@ -57,28 +69,96 @@ export const HistoryPage: React.FC = () => {
     a.click();
   };
 
+  const handleOpenSource = (log: HistoryLog) => {
+    if (log.triggeredBy === 'voice' && log.speechInputId) {
+      navigate(`/speech-history?speechInputId=${encodeURIComponent(log.speechInputId)}`);
+      return;
+    }
+
+    if (log.triggeredBy === 'auto' && log.autoRuleId) {
+      navigate(`/auto-rules?autoRuleId=${encodeURIComponent(log.autoRuleId)}`);
+    }
+  };
+
+  const canOpenSource = (log: HistoryLog) => {
+    return (log.triggeredBy === 'voice' && !!log.speechInputId)
+      || (log.triggeredBy === 'auto' && !!log.autoRuleId);
+  };
+
+  const renderDevice = (log: HistoryLog) => {
+    const isFan = log.deviceType === 'fan';
+    const Icon = isFan ? Fan : Lightbulb;
+    const isOn = !log.action.startsWith('Tắt');
+
+    return (
+      <div className="flex items-center gap-3">
+        <div
+          className={`p-2 rounded-lg ${
+            isOn
+              ? 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white'
+              : 'bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+          }`}
+        >
+          <Icon className={`w-4 h-4 ${isFan && isOn ? 'animate-spin' : isOn ? 'animate-pulse' : ''}`} />
+        </div>
+        <span className="font-medium text-gray-900 dark:text-gray-100">{log.device}</span>
+      </div>
+    );
+  };
+
+  const renderAction = (log: HistoryLog) => {
+    const isOff = log.action.startsWith('Tắt');
+    const isSpeedChange = log.action.startsWith('Chỉnh');
+
+    return (
+      <span
+        className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
+          isOff
+            ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+            : isSpeedChange
+            ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-200'
+            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200'
+        }`}
+      >
+        <Power className="w-3.5 h-3.5" />
+        {log.action}
+      </span>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+      <header className="border-b border-slate-200 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate('/dashboard')}
-                className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
-                aria-label="Back to dashboard"
+                className="p-2.5 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-950 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+                aria-label="Quay lại bảng điều khiển"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Lịch sử hoạt động
-              </h1>
+
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-100 text-blue-700 dark:bg-blue-950/40 dark:border-blue-900 dark:text-blue-300">
+                <HistoryIcon className="w-6 h-6" />
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Nhật ký hệ thống</p>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
+                  Lịch sử hoạt động
+                </h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Theo dõi các lệnh điều khiển thủ công, tự động và giọng nói.
+                </p>
+              </div>
             </div>
 
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 transition-colors"
             >
               <Download className="w-4 h-4" />
               Xuất CSV
@@ -96,7 +176,7 @@ export const HistoryPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Bộ lọc</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nguồn kích hoạt
@@ -110,6 +190,21 @@ export const HistoryPage: React.FC = () => {
                 <option value="manual">Thủ công</option>
                 <option value="auto">Tự động</option>
                 <option value="voice">Giọng nói</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Thiết bị
+              </label>
+              <select
+                value={deviceFilter}
+                onChange={(e) => setDeviceFilter(e.target.value as typeof deviceFilter)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              >
+                <option value="all">Tất cả</option>
+                <option value="light">Đèn</option>
+                <option value="fan">Quạt</option>
               </select>
             </div>
 
@@ -151,33 +246,36 @@ export const HistoryPage: React.FC = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Nguồn
                   </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Liên kết
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {loading && (
                   <tr>
-                    <td className="px-6 py-6 text-sm text-gray-500 dark:text-gray-400" colSpan={5}>
+                    <td className="px-6 py-6 text-sm text-gray-500 dark:text-gray-400" colSpan={6}>
                       Đang tải lịch sử...
                     </td>
                   </tr>
                 )}
                 {!loading && filteredLogs.length === 0 && (
                   <tr>
-                    <td className="px-6 py-6 text-sm text-gray-500 dark:text-gray-400" colSpan={5}>
+                    <td className="px-6 py-6 text-sm text-gray-500 dark:text-gray-400" colSpan={6}>
                       Chưa có lịch sử điều khiển
                     </td>
                   </tr>
                 )}
-                {filteredLogs.map((log) => (
+                {pagedLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                       {format(new Date(log.timestamp), 'dd/MM/yyyy HH:mm:ss')}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                      {log.device}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {renderDevice(log)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                      {log.action}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {renderAction(log)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -205,11 +303,34 @@ export const HistoryPage: React.FC = () => {
                         {log.triggeredBy === 'voice' && 'Giọng nói'}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      {canOpenSource(log) ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSource(log)}
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/40 transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          {log.triggeredBy === 'voice' ? 'Speech input' : 'Auto rule'}
+                        </button>
+                      ) : (
+                        <span className="text-sm text-gray-400 dark:text-gray-500">Không có</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {!loading && (
+            <PaginationControls
+              currentPage={currentPage}
+              pageSize={pageSize}
+              totalItems={filteredLogs.length}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          )}
         </div>
       </main>
     </div>

@@ -8,5 +8,6 @@ public class UserRequest {
     String phone;
     String password;
     String firstName;
+    String middleName;
     String lastName;
 }

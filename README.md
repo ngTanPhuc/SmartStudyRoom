@@ -130,6 +130,15 @@ Body mẫu:
 
 Gateway đọc serial từ thiết bị IoT và subscribe command từ backend.
 
+Nếu chạy lần đầu, cài dependency cho `iot-edge`:
+
+```powershell
+cd iot-edge
+python -m pip uninstall serial -y
+python -m pip install -r requirements.txt
+cd ..
+```
+
 Các biến môi trường thường dùng:
 
 ```powershell

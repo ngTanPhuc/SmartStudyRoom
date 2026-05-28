@@ -12,6 +12,7 @@ import com.aiot.backend.mapper.SensorMapper;
 import com.aiot.backend.repository.SensorDataRepository;
 import com.aiot.backend.repository.SensorRepository;
 import com.aiot.backend.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -56,7 +57,11 @@ public class SensorService {
     @PreAuthorize("hasAuthority('SCOPE_ADMIN') or #userId == authentication.name")
     public SensorResponse getSensor(String userId, String sensorId) {
         Sensor sensor = getRawSensor(userId, sensorId);
-        return sensorMapper.toResponse(sensor);
+        SensorResponse response = sensorMapper.toResponse(sensor);
+        sensorDataRepository
+                .findTopById_SensorIdOrderById_TimestampDesc(sensor.getId())
+                .ifPresent(data -> response.setCurrentValue(data.getValue()));
+        return response;
     }
 
     @PreAuthorize("hasAuthority('SCOPE_ADMIN') or #userId == authentication.name")
@@ -64,6 +69,30 @@ public class SensorService {
         Sensor sensor = getRawSensor(userId, sensorId);
         List<SensorData> sensorDataList = sensorDataRepository.findById_SensorIdOrderById_TimestampDesc(sensorId);
         return sensorMapper.toResponse(sensorDataList);
+    }
+
+    @Transactional
+    @PreAuthorize("hasAuthority('SCOPE_ADMIN') or #userId == authentication.name")
+    public int deleteSensorData(String userId, String sensorId, LocalDateTime from, LocalDateTime to) {
+        getRawSensor(userId, sensorId);
+
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new WebException(ErrorCode.INVALID_REQUEST);
+        }
+
+        if (from != null && to != null) {
+            return sensorDataRepository.deleteBySensorIdAndTimestampBetween(sensorId, from, to);
+        }
+
+        if (to != null) {
+            return sensorDataRepository.deleteBySensorIdAndTimestampBeforeOrEqual(sensorId, to);
+        }
+
+        if (from != null) {
+            return sensorDataRepository.deleteBySensorIdAndTimestampAfterOrEqual(sensorId, from);
+        }
+
+        return sensorDataRepository.deleteBySensorId(sensorId);
     }
 
     public void handleSensorData(String userId, SensorDataRequest request) {

@@ -14,8 +14,10 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<User>;
   register: (data: RegisterData) => Promise<void>;
+  updateProfile: (data: Parameters<typeof authApi.updateProfile>[0]) => Promise<User>;
+  refreshUser: () => Promise<User>;
   logout: () => Promise<void>;
 }
 
@@ -47,6 +49,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await authApi.login(credentials);
       setUser(response.user);
+      return response.user;
     } finally {
       setIsLoading(false);
     }
@@ -72,6 +75,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const refreshUser = async () => {
+    const refreshedUser = await authApi.getMyInfo();
+    setUser(refreshedUser);
+    return refreshedUser;
+  };
+
+  const updateProfile = async (data: Parameters<typeof authApi.updateProfile>[0]) => {
+    const updatedUser = await authApi.updateProfile(data);
+    setUser(updatedUser);
+    return updatedUser;
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -80,6 +95,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isLoading,
         login,
         register,
+        updateProfile,
+        refreshUser,
         logout,
       }}
     >

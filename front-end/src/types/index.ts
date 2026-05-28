@@ -76,9 +76,12 @@ export interface HistoryLog {
   id: string;
   timestamp: string;
   device: string;
+  deviceType: 'fan' | 'light';
   action: string;
   status: 'success' | 'failed' | 'pending';
   triggeredBy: 'manual' | 'auto' | 'voice';
+  autoRuleId?: string | null;
+  speechInputId?: string | null;
   details?: string;
 }
 
@@ -112,6 +115,7 @@ export interface LoginCredentials {
 
 export interface RegisterData extends LoginCredentials {
   firstName: string;
+  middleName: string;
   lastName: string;
   username?: string;
   phone?: string;
@@ -127,9 +131,13 @@ export interface User {
   email: string;
   phone?: string;
   firstName?: string;
+  middleName?: string;
   lastName?: string;
   fullName?: string;
   username?: string;
+  createdAt?: string;
+  lastUpdated?: string;
+  lastLogin?: string;
   roles?: string[];
 }
 

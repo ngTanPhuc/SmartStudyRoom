@@ -12,6 +12,7 @@ export const RegisterPage: React.FC = () => {
     password: '',
     confirmPassword: '',
     firstName: '',
+    middleName: '',
     lastName: '',
   });
   const [error, setError] = useState('');
@@ -22,7 +23,7 @@ export const RegisterPage: React.FC = () => {
     setError('');
 
     // Validation
-    if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
+    if (!formData.email || !formData.password || !formData.firstName || !formData.middleName || !formData.lastName) {
       setError('Vui lòng điền đầy đủ thông tin');
       return;
     }
@@ -44,6 +45,7 @@ export const RegisterPage: React.FC = () => {
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
+        middleName: formData.middleName,
         lastName: formData.lastName,
       });
       navigate('/dashboard');
@@ -69,7 +71,7 @@ export const RegisterPage: React.FC = () => {
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-400/20 rounded-full blur-3xl animate-float animation-delay-1000"></div>
       </div>
 
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full max-w-lg">
         {/* Back button */}
         <Link
           to="/login"
@@ -104,7 +106,7 @@ export const RegisterPage: React.FC = () => {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name fields */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Họ
@@ -113,11 +115,29 @@ export const RegisterPage: React.FC = () => {
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="text"
-                    name="firstName"
-                    value={formData.firstName}
+                    name="lastName"
+                    value={formData.lastName}
                     onChange={handleChange}
                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     placeholder="Nguyễn"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tên lót
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    name="middleName"
+                    value={formData.middleName}
+                    onChange={handleChange}
+                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    placeholder="Văn"
                     required
                   />
                 </div>
@@ -131,11 +151,11 @@ export const RegisterPage: React.FC = () => {
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="text"
-                    name="lastName"
-                    value={formData.lastName}
+                    name="firstName"
+                    value={formData.firstName}
                     onChange={handleChange}
                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Văn A"
+                    placeholder="An"
                     required
                   />
                 </div>

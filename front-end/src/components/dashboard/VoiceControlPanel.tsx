@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Mic, MicOff, Volume2 } from 'lucide-react';
+import { History, Mic, MicOff, Volume2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useVoiceControl } from '@/hooks/useVoiceControl';
 import { SpeechControlResult } from '@/services/api';
 
@@ -8,6 +9,7 @@ interface VoiceControlPanelProps {
 }
 
 export const VoiceControlPanel: React.FC<VoiceControlPanelProps> = ({ onCommandConfirmed }) => {
+  const navigate = useNavigate();
   const { voiceCommand, isListening, startListening, stopListening } =
     useVoiceControl();
 
@@ -20,6 +22,9 @@ export const VoiceControlPanel: React.FC<VoiceControlPanelProps> = ({ onCommandC
   const confidence = voiceCommand.transcript.confidence;
   const keywords = voiceCommand.transcript.keywords;
   const error = voiceCommand.error;
+  const displayPredictionLabel = prediction && prediction.confidence < 0.7
+    ? 'UNKNOWN'
+    : prediction?.predictLabel;
 
   const handleStartListening = () => {
     startListening();
@@ -60,16 +65,28 @@ export const VoiceControlPanel: React.FC<VoiceControlPanelProps> = ({ onCommandC
   }, [voiceCommand.status, transcript, onCommandConfirmed]);
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
+    <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 backdrop-blur-sm border border-gray-200 dark:border-gray-700">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
-          <Volume2 className="w-6 h-6 text-white" />
+      <div className="flex items-start justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+            <Volume2 className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Điều khiển giọng nói</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Nói lệnh để điều khiển</p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Điều khiển giọng nói</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Nói lệnh để điều khiển</p>
-        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/speech-history')}
+          className="p-2 rounded-lg text-gray-500 hover:text-purple-600 hover:bg-purple-50 dark:text-gray-400 dark:hover:text-purple-300 dark:hover:bg-purple-900/20 transition-colors"
+          aria-label="Xem lịch sử giọng nói"
+          title="Lịch sử giọng nói"
+        >
+          <History className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Microphone Button */}
@@ -190,7 +207,7 @@ export const VoiceControlPanel: React.FC<VoiceControlPanelProps> = ({ onCommandC
           </p>
           <div className="space-y-1 text-sm text-gray-800 dark:text-gray-100">
             <p>
-              Nhãn: <span className="font-bold">{prediction.predictLabel}</span>
+              Nhãn: <span className="font-bold">{displayPredictionLabel}</span>
             </p>
             <p>
               Độ tin cậy: <span className="font-bold">{(prediction.confidence * 100).toFixed(0)}%</span>
@@ -221,6 +238,7 @@ export const VoiceControlPanel: React.FC<VoiceControlPanelProps> = ({ onCommandC
           ))}
         </div>
       </div>
+
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Moon, Sun, LogOut, BarChart3, History, Sparkles } from 'lucide-react';
+import { Moon, Sun, LogOut, BarChart3, History, Sparkles, SlidersHorizontal, UserRound } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRealtimeFeed } from '@/hooks/useRealtimeFeed';
@@ -20,6 +20,33 @@ export const DashboardPage: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { data: sensorData, connectionStatus } = useRealtimeFeed();
+
+  const headerNavigation = [
+    {
+      label: 'Biểu đồ',
+      path: '/charts',
+      icon: BarChart3,
+      classes: 'hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/20',
+    },
+    {
+      label: 'Luật tự động',
+      path: '/auto-rules',
+      icon: SlidersHorizontal,
+      classes: 'hover:text-indigo-600 hover:bg-indigo-50 dark:hover:text-indigo-400 dark:hover:bg-indigo-900/20',
+    },
+    {
+      label: 'Lịch sử',
+      path: '/history',
+      icon: History,
+      classes: 'hover:text-purple-600 hover:bg-purple-50 dark:hover:text-purple-400 dark:hover:bg-purple-900/20',
+    },
+    {
+      label: 'Thông tin người dùng',
+      path: '/profile',
+      icon: UserRound,
+      classes: 'hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/20',
+    },
+  ];
 
   // Device states - fetch from Adafruit IO
   const [devices, setDevices] = useState<DeviceStatus[]>([
@@ -153,14 +180,32 @@ export const DashboardPage: React.FC = () => {
                   Smart Classroom IoT
                 </h1>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Xin chào, <span className="font-semibold">{user?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email}</span>
+                  Xin chào, <span className="font-semibold">{user?.fullName || `${user?.lastName || ''} ${user?.middleName || ''} ${user?.firstName || ''}`.replace(/\s+/g, ' ').trim() || user?.email}</span>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Primary Navigation */}
+              <div className="flex items-center gap-1 sm:gap-2">
+                {headerNavigation.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => navigate(item.path)}
+                      className={`p-2 rounded-lg text-gray-600 dark:text-gray-400 transition-all duration-200 ${item.classes}`}
+                      aria-label={item.label}
+                      title={item.label}
+                    >
+                      <Icon className="w-5 h-5" />
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Connection Status */}
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700/50">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700/50">
                 <div
                   className={`w-2 h-2 rounded-full ${
                     connectionStatus === 'connected'
@@ -178,28 +223,12 @@ export const DashboardPage: React.FC = () => {
                 </span>
               </div>
 
-              {/* Navigation Buttons */}
-              <button
-                onClick={() => navigate('/charts')}
-                className="p-2 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 dark:text-gray-400 dark:hover:text-blue-400 dark:hover:bg-blue-900/20 transition-all duration-200"
-                aria-label="Charts"
-              >
-                <BarChart3 className="w-5 h-5" />
-              </button>
-
-              <button
-                onClick={() => navigate('/history')}
-                className="p-2 rounded-lg text-gray-600 hover:text-purple-600 hover:bg-purple-50 dark:text-gray-400 dark:hover:text-purple-400 dark:hover:bg-purple-900/20 transition-all duration-200"
-                aria-label="History"
-              >
-                <History className="w-5 h-5" />
-              </button>
-
               {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
-                className="p-2 rounded-lg text-gray-600 hover:text-orange-600 hover:bg-orange-50 dark:text-gray-400 dark:hover:text-orange-400 dark:hover:bg-orange-900/20 transition-all duration-200"
-                aria-label="Toggle theme"
+                className="p-2 rounded-lg text-gray-600 hover:text-orange-600 hover:bg-orange-50 dark:text-gray-400 dark:hover:text-orange-400 dark:hover:bg-orange-900/20 transition-all duration-200 border-l border-gray-200 dark:border-gray-700 pl-3"
+                aria-label="Đổi giao diện"
+                title="Đổi giao diện"
               >
                 {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
@@ -208,7 +237,8 @@ export const DashboardPage: React.FC = () => {
               <button
                 onClick={handleLogout}
                 className="p-2 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 dark:text-gray-400 dark:hover:text-red-400 dark:hover:bg-red-900/20 transition-all duration-200"
-                aria-label="Logout"
+                aria-label="Đăng xuất"
+                title="Đăng xuất"
               >
                 <LogOut className="w-5 h-5" />
               </button>

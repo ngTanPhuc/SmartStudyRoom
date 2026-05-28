@@ -24,8 +24,8 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      await login({ email, password });
-      navigate('/dashboard');
+      const loggedInUser = await login({ email, password });
+      navigate(loggedInUser.roles?.includes('ADMIN') ? '/admin' : '/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Đăng nhập thất bại');
     } finally {

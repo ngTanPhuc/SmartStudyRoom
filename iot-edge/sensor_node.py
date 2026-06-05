@@ -16,6 +16,7 @@ spoll.register(sys.stdin, uselect.POLLIN)
 
 # Biến quản lý thời gian gửi cảm biến
 last_sensor_time = time.ticks_ms()
+SENSOR_INTERVAL_MS = 5000
 
 print("YoloBit Ready!")
 
@@ -33,14 +34,15 @@ while True:
     if line:
         if line.startswith("S"):
             try:
-                percent = int(line.replace("S", ""))
+                percent = int(line[1:])
+                percent = max(0, min(100, percent))
                 # Chuyển đổi 0-100% sang 0-1023
                 speed_val = round(translate(percent, 0, 100, 0, 1023))
-                # Quạt kết nối tại chân P0
+                # Quạt kết nối tại chân P1
                 pin1.write_analog(speed_val)
                 print("ACK:FAN:" + str(percent))
-            except:
-                pass
+            except Exception as e:
+                print("ERR:FAN:" + str(e))
 
         # Xử lý lệnh LED (1: Bật đỏ, 0: Tắt)
         elif line == "1":
@@ -54,22 +56,27 @@ while True:
             print("ACK:LED:OFF")
 
     curr_time = time.ticks_ms()
-    if time.ticks_diff(curr_time, last_sensor_time) > 5000:
+    if time.ticks_diff(curr_time, last_sensor_time) > SENSOR_INTERVAL_MS:
         try:
             aiot_dht20.read_dht20()
             temp = aiot_dht20.dht20_temperature()
             humi = aiot_dht20.dht20_humidity()
-            raw_light = pin0.read_analog()
-            light_val = round(translate(raw_light, 0, 4095, 0, 100))
 
             # Gửi lên Gateway (Máy tính sẽ đọc được qua Serial)
             print("T:" + str(temp))
             print("H:" + str(humi))
+
+        except Exception as e:
+            # Nếu DHT20 lỗi, không làm treo chương trình và báo lỗi qua serial
+            print("ERR:DHT20:" + str(e))
+
+        try:
+            raw_light = pin0.read_analog()
+            light_val = round(translate(raw_light, 0, 4095, 0, 100))
             print("L:" + str(light_val))
 
-        except:
-            # Nếu lỗi cảm biến, không làm treo chương trình
-            pass
+        except Exception as e:
+            print("ERR:LIGHT:" + str(e))
 
         last_sensor_time = curr_time
 

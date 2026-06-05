@@ -16,9 +16,14 @@ SERIAL_PORT = os.getenv("SMART_ROOM_SERIAL_PORT", "COM3")
 BAUDRATE = int(os.getenv("SMART_ROOM_BAUDRATE", "115200"))
 
 BASE_URL = os.getenv("SMART_ROOM_BACKEND_URL", "http://localhost:8080")
+#BASE_URL = os.getenv("SMART_ROOM_BACKEND_URL", "https://smartstudyroom-production.up.railway.app")
+
 WS_URL = os.getenv("SMART_ROOM_WS_URL", "ws://localhost:8080/ws")
+#WS_URL = os.getenv("SMART_ROOM_WS_URL", "ws://smartstudyroom-production.up.railway.app/ws")
+
 USER_ID = os.getenv("SMART_ROOM_USER_ID", "c7ab5c64-cee4-4ef6-9b2e-1f71824c0920")
 BACKEND_TOKEN = os.getenv("SMART_ROOM_BACKEND_TOKEN", "")
+DEBUG_SERIAL = os.getenv("SMART_ROOM_DEBUG_SERIAL", "1") != "0"
 
 # ===== SERIAL =====
 if not hasattr(serial, "Serial"):
@@ -28,6 +33,8 @@ if not hasattr(serial, "Serial"):
     )
 
 ser = serial.Serial(SERIAL_PORT, BAUDRATE, timeout=1)
+time.sleep(2)
+print(f"Serial opened: {SERIAL_PORT} @ {BAUDRATE}")
 
 # ===== SENSOR PARSER =====
 def parse_sensor_line(line: str):
@@ -61,6 +68,9 @@ def send_sensor_data(data):
         )
         if res.status_code >= 400:
             print("Send sensor failed:", res.status_code, res.text)
+        else:
+            pass
+            #print("Sent sensor:", data.get("sensorType"), data.get("value"))
     except Exception as e:
         print("Send sensor error:", e)
 
@@ -68,15 +78,20 @@ def send_sensor_data(data):
 def serial_reader():
     while True:
         try:
-            line = ser.readline().decode().strip()
+            raw = ser.readline()
+            line = raw.decode("utf-8", errors="replace").strip()
             if not line:
                 continue
 
-            print("SERIAL:", line)
+            #print("SERIAL:", line)
 
             data = parse_sensor_line(line)
             if data:
                 send_sensor_data(data)
+            elif line.startswith("ERR:"):
+                print("Yolobit error:", line)
+            elif DEBUG_SERIAL and not line.startswith("ACK:") and line != "YoloBit Ready!":
+                print("Ignored serial line:", line)
 
         except Exception as e:
             print("Read error:", e)
@@ -159,6 +174,8 @@ def start_ws():
 # ===== MAIN =====
 if __name__ == "__main__":
     print("Gateway started...")
+    print("Backend URL:", BASE_URL)
+    print("WebSocket URL:", WS_URL)
     if not USER_ID:
         print("Warning: SMART_ROOM_USER_ID is not set; sensor data will be rejected unless the request is authenticated.")
 

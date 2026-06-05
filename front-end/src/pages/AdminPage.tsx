@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Edit3,
+  LogOut,
   Mail,
   Phone,
   RefreshCw,
@@ -44,7 +45,7 @@ const safeDate = (value?: string) => {
 
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const isAdmin = user?.roles?.includes('ADMIN');
   const [users, setUsers] = useState<AdminUserSummary[]>([]);
   const [query, setQuery] = useState('');
@@ -182,6 +183,16 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      window.location.href = '/login';
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4">
@@ -231,14 +242,26 @@ export const AdminPage: React.FC = () => {
               </div>
             </div>
 
-            <button
-              onClick={loadUsers}
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Làm mới
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadUsers}
+                disabled={loading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                Làm mới
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-red-200 text-red-600 font-medium hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950/40 transition-colors"
+                aria-label="Đăng xuất"
+                title="Đăng xuất"
+              >
+                <LogOut className="w-4 h-4" />
+                Đăng xuất
+              </button>
+            </div>
           </div>
         </div>
       </header>

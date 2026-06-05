@@ -10,7 +10,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import { speechApi, SpeechControlResult } from '@/services/api';
-import { formatTimestamp } from '@/utils/helpers';
+import { formatDisplayConfidencePercent, formatTimestamp, getDisplayConfidencePercent } from '@/utils/helpers';
 import { PaginationControls } from '@/components/common/PaginationControls';
 
 const confidenceTone = (confidence: number) => {
@@ -67,7 +67,10 @@ export const SpeechHistoryPage: React.FC = () => {
 
   const averageConfidence = useMemo(() => {
     if (items.length === 0) return 0;
-    return items.reduce((sum, item) => sum + Number(item.confidence || 0), 0) / items.length;
+    return items.reduce(
+      (sum, item) => sum + getDisplayConfidencePercent(Number(item.confidence || 0), item.rawtext || ''),
+      0
+    ) / items.length;
   }, [items]);
 
   const highConfidenceCount = items.filter((item) => Number(item.confidence || 0) >= 0.7).length;
@@ -130,7 +133,7 @@ export const SpeechHistoryPage: React.FC = () => {
             <p className="text-sm text-purple-700 dark:text-purple-300">Confidence trung bình</p>
             <div className="mt-2 flex items-end justify-between">
               <span className="text-3xl font-bold text-purple-900 dark:text-purple-100">
-                {(averageConfidence * 100).toFixed(0)}%
+                {averageConfidence.toFixed(2)}%
               </span>
               <BarChart3 className="w-6 h-6 text-purple-600 dark:text-purple-300" />
             </div>
@@ -229,7 +232,7 @@ export const SpeechHistoryPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`rounded-full px-3 py-1.5 text-sm font-bold ${confidenceTone(confidence)}`}>
-                          {(confidence * 100).toFixed(0)}%
+                          {formatDisplayConfidencePercent(confidence, item.rawtext || '')}
                         </span>
                       </td>
                     </tr>

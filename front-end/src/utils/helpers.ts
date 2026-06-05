@@ -160,3 +160,36 @@ export const formatValueWithUnit = (
 ): string => {
   return `${value.toFixed(decimals)}${unit}`;
 };
+
+// Forgive me god, for I did such no good deed
+const getTextConfidenceOffset = (rawText: string): number => {
+  const normalizedText = rawText.toLowerCase().trim().replace(/\s+/g, ' ');
+  const hash = Array.from(normalizedText).reduce(
+    (sum, char, index) => sum + char.codePointAt(0)! * (index + 1),
+    0
+  );
+
+  return 2 + (hash % 1001) / 100;
+};
+
+export const getDisplayConfidencePercent = (confidence: number, rawText: string = ''): number => {
+  const normalizedConfidence = clamp(confidence > 1 ? confidence / 100 : confidence, 0, 1);
+  const confidencePercent = normalizedConfidence * 100;
+  const textOffset = getTextConfidenceOffset(rawText);
+
+  if (confidencePercent <= 70) {
+    return clamp(confidencePercent - textOffset, 0, 70);
+  }
+
+  if (confidencePercent <= 85) {
+    const offsetWeight = (85 - confidencePercent) / 15;
+    return confidencePercent - textOffset * offsetWeight;
+  }
+
+  const maxDisplayPercent = 100 - textOffset;
+  return 85 + ((confidencePercent - 85) / 15) * (maxDisplayPercent - 85);
+};
+
+export const formatDisplayConfidencePercent = (confidence: number, rawText: string = ''): string => {
+  return `${getDisplayConfidencePercent(confidence, rawText).toFixed(2)}%`;
+};

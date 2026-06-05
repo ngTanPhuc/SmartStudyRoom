@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, ExternalLink, Fan, Filter, History as HistoryIcon, Lightbulb, Power } from 'lucide-react';
+import { ArrowLeft, ArrowDownUp, Download, ExternalLink, Fan, Filter, History as HistoryIcon, Lightbulb, Power } from 'lucide-react';
 import { format } from 'date-fns';
 import { HistoryLog } from '@/types';
 import { historyApi } from '@/services/api';
@@ -11,6 +11,7 @@ export const HistoryPage: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'manual' | 'auto' | 'voice'>('all');
   const [deviceFilter, setDeviceFilter] = useState<'all' | 'fan' | 'light'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'failed'>('all');
+  const [dateSort, setDateSort] = useState<'newest' | 'oldest'>('newest');
   const [logs, setLogs] = useState<HistoryLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -32,19 +33,25 @@ export const HistoryPage: React.FC = () => {
     fetchLogs();
   }, []);
 
-  const filteredLogs = logs.filter((log) => {
-    if (filter !== 'all' && log.triggeredBy !== filter) return false;
-    if (deviceFilter !== 'all' && log.deviceType !== deviceFilter) return false;
-    if (statusFilter !== 'all' && log.status !== statusFilter) return false;
-    return true;
-  });
+  const filteredLogs = logs
+    .filter((log) => {
+      if (filter !== 'all' && log.triggeredBy !== filter) return false;
+      if (deviceFilter !== 'all' && log.deviceType !== deviceFilter) return false;
+      if (statusFilter !== 'all' && log.status !== statusFilter) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const firstTime = new Date(a.timestamp).getTime();
+      const secondTime = new Date(b.timestamp).getTime();
+      return dateSort === 'newest' ? secondTime - firstTime : firstTime - secondTime;
+    });
   const totalPages = Math.max(Math.ceil(filteredLogs.length / pageSize), 1);
   const currentPage = Math.min(page, totalPages);
   const pagedLogs = filteredLogs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   useEffect(() => {
     setPage(1);
-  }, [filter, deviceFilter, statusFilter, pageSize]);
+  }, [filter, deviceFilter, statusFilter, dateSort, pageSize]);
 
   const handleExport = () => {
     const csv = [
@@ -176,7 +183,7 @@ export const HistoryPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Bộ lọc</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Nguồn kích hoạt
@@ -221,6 +228,23 @@ export const HistoryPage: React.FC = () => {
                 <option value="success">Thành công</option>
                 <option value="failed">Thất bại</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Sắp xếp thời gian
+              </label>
+              <div className="relative">
+                <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <select
+                  value={dateSort}
+                  onChange={(e) => setDateSort(e.target.value as typeof dateSort)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="newest">Mới nhất trước</option>
+                  <option value="oldest">Cũ nhất trước</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>

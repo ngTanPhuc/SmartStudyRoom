@@ -173,7 +173,7 @@ export const VoiceControlPanel: React.FC<VoiceControlPanelProps> = ({ onCommandC
                 ></div>
               </div>
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                {formatDisplayConfidencePercent(confidence)}
+                {formatDisplayConfidencePercent(confidence, transcript)}
               </span>
             </div>
           )}
@@ -213,7 +213,7 @@ export const VoiceControlPanel: React.FC<VoiceControlPanelProps> = ({ onCommandC
             <p>
               Độ tin cậy:{' '}
               <span className="font-bold">
-                {formatDisplayConfidencePercent(prediction.confidence)}
+                {formatDisplayConfidencePercent(prediction.confidence, prediction.rawtext)}
               </span>
             </p>
             {prediction.device && (

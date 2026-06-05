@@ -1,5 +1,6 @@
 package com.aiot.backend.service;
 
+import com.aiot.backend.dto.iot.GatewayCommandMessage;
 import com.aiot.backend.dto.response.CommandResponse;
 import com.aiot.backend.entity.Command;
 import com.aiot.backend.exception.ErrorCode;
@@ -11,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
@@ -24,15 +27,20 @@ public class CommandService {
 
     CommandMapper commandMapper;
 
-    public void sendCmdToGateway(Command command) {
-        String payload = String.format(
-                "{\"userId\":\"%s\",\"deviceType\":\"%s\",\"value\":%d}",
-                command.getUser().getId(),
-                command.getDevice().getDeviceType().name(),
-                command.getCurrentIntensity()
-        );
+    ObjectMapper objectMapper;
 
-        messagingTemplate.convertAndSend("/topic/commands", payload);
+    public void sendCmdToGateway(Command command) {
+        GatewayCommandMessage message = GatewayCommandMessage.builder()
+                .userId(command.getUser().getId())
+                .deviceType(command.getDevice().getDeviceType())
+                .value(command.getCurrentIntensity())
+                .build();
+
+        try {
+            messagingTemplate.convertAndSend("/topic/commands", objectMapper.writeValueAsString(message));
+        } catch (JacksonException e) {
+            throw new WebException(ErrorCode.COMMAND_EXECUTION_FAILED);
+        }
     }
 
     public List<CommandResponse> getCommands(String userId) {

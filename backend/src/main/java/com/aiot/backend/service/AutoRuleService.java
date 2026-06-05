@@ -15,6 +15,7 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -23,12 +24,15 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AutoRuleService {
+    private static final int DEFAULT_COOLDOWN_SECONDS = 5;
+
     AutoRuleRepository autoRuleRepository;
     CommandRepository commandRepository;
     AutoRuleMapper autoRuleMapper;
@@ -46,23 +50,22 @@ public class AutoRuleService {
     ) {}
 
     @Transactional
+    @PreAuthorize("hasAuthority('SCOPE_ADMIN') or #userId == authentication.name")
     public AutoRuleResponse createAutoRule(String userId, AutoRuleCreationRequest request) {
-        if (request.getSensorId() == null || request.getDeviceId() == null
-                || request.getOperator() == null || request.getThresh() == null
-                || request.getTargetValue() == null) {
-            throw new WebException(ErrorCode.INVALID_REQUEST);
-        }
+        validateCreationRequest(request);
         Sensor sensor = sensorService.getRawSensor(userId, request.getSensorId());
         Device device = deviceService.getRawDevice(userId, request.getDeviceId());
 
         AutoRule autoRule = autoRuleMapper.toEntity(request, sensor, device);
+        autoRule.setLastEvaluatedAt(getLatestSensorTimestamp(sensor.getId()));
         autoRuleRepository.save(autoRule);
 
         return toResponseWithCurrentSensorValue(autoRule);
     }
 
+    @PreAuthorize("hasAuthority('SCOPE_ADMIN') or #userId == authentication.name")
     public List<AutoRuleResponse> getAutoRules(String userId) {
-        return autoRuleRepository.findByUser_Id(userId).stream()
+        return autoRuleRepository.findByUser_IdAndDeletedAtIsNull(userId).stream()
                 .map(this::toResponseWithCurrentSensorValue)
                 .toList();
     }
@@ -73,16 +76,24 @@ public class AutoRuleService {
         );
     }
 
+    @PreAuthorize("hasAuthority('SCOPE_ADMIN') or #userId == authentication.name")
     public AutoRuleResponse getAutoRule(String userId, String ruleId) {
         AutoRule autoRule = getRawAutoRule(userId, ruleId);
         return toResponseWithCurrentSensorValue(autoRule);
     }
 
     @Transactional
+    @PreAuthorize("hasAuthority('SCOPE_ADMIN') or #userId == authentication.name")
     public AutoRuleResponse updateAutoRule(String userId, String ruleId, AutoRuleUpdateRequest request) {
+        validateUpdateRequest(request);
         AutoRule autoRule = getRawAutoRule(userId, ruleId);
+        ensureMutable(autoRule);
+        boolean shouldResetBaseline = shouldResetBaseline(request, autoRule);
 
         autoRule = autoRuleMapper.toEntity(request, autoRule);
+        if (shouldResetBaseline) {
+            autoRule.setLastEvaluatedAt(getLatestSensorTimestamp(autoRule.getSensor().getId()));
+        }
         autoRuleRepository.save(autoRule);
 
         return toResponseWithCurrentSensorValue(autoRule);
@@ -97,14 +108,19 @@ public class AutoRuleService {
     }
 
     @Transactional
+    @PreAuthorize("hasAuthority('SCOPE_ADMIN') or #userId == authentication.name")
     public void deleteAutoRule(String userId, String ruleId) {
         AutoRule autoRule = getRawAutoRule(userId, ruleId);
-        commandRepository.deleteByAutoRuleId(ruleId);
-        autoRuleRepository.delete(autoRule);
+        ensureMutable(autoRule);
+        autoRule.setActive(false);
+        autoRule.setDeletedAt(LocalDateTime.now());
+        autoRuleRepository.save(autoRule);
     }
 
     public boolean canTrigger(AutoRule rule, Double previousValue, Double currentValue) {
-        if (!Boolean.TRUE.equals(rule.getActive()) || previousValue == null || currentValue == null) {
+        if (!Boolean.TRUE.equals(rule.getActive()) || rule.getDeletedAt() != null
+                || rule.getOperator() == null || rule.getThresh() == null
+                || previousValue == null || currentValue == null) {
             return false;
         }
 
@@ -117,7 +133,7 @@ public class AutoRuleService {
                 rule.getLastTriggerAt(),
                 LocalDateTime.now()
         ).getSeconds();
-        int cooldown = rule.getCoolDownSeconds() == null ? 5 : rule.getCoolDownSeconds();
+        int cooldown = rule.getCoolDownSeconds() == null ? DEFAULT_COOLDOWN_SECONDS : rule.getCoolDownSeconds();
         boolean checkTime = seconds >= cooldown;
 
         return checkTime;
@@ -138,7 +154,7 @@ public class AutoRuleService {
 
     @Transactional
     public void handleSensor() {
-        List<AutoRule> rules = autoRuleRepository.findByActiveTrue();
+        List<AutoRule> rules = autoRuleRepository.findByActiveTrueAndDeletedAtIsNull();
         List<TriggerCandidate> candidates = new ArrayList<>();
 
         for (AutoRule rule : rules) {
@@ -197,6 +213,11 @@ public class AutoRuleService {
 
     private void executeCandidate(TriggerCandidate candidate) {
         AutoRule rule = candidate.rule();
+        Device device = rule.getDevice();
+        if (Objects.equals(device.getIntensityLevel(), rule.getTargetValue())) {
+            return;
+        }
+
         Command command = autoRuleMapper.toCommand(rule);
         commandRepository.save(command);
         deviceRepository.save(command.getDevice());
@@ -205,5 +226,57 @@ public class AutoRuleService {
 
         rule.setLastTriggerAt(LocalDateTime.now());
         autoRuleRepository.save(rule);
+    }
+
+    private void validateCreationRequest(AutoRuleCreationRequest request) {
+        if (request == null || request.getSensorId() == null || request.getSensorId().isBlank()
+                || request.getDeviceId() == null || request.getDeviceId().isBlank()
+                || request.getOperator() == null || request.getThresh() == null
+                || request.getTargetValue() == null) {
+            throw new WebException(ErrorCode.INVALID_REQUEST);
+        }
+        validateThreshold(request.getThresh());
+    }
+
+    private void validateUpdateRequest(AutoRuleUpdateRequest request) {
+        if (request == null || (request.getOperator() == null && request.getThresh() == null
+                && request.getTargetValue() == null && request.getActive() == null)) {
+            throw new WebException(ErrorCode.INVALID_REQUEST);
+        }
+        if (request.getThresh() != null) {
+            validateThreshold(request.getThresh());
+        }
+    }
+
+    private void validateThreshold(Double threshold) {
+        if (threshold.isNaN() || threshold.isInfinite()) {
+            throw new WebException(ErrorCode.RULE_INVALID);
+        }
+    }
+
+    private void ensureMutable(AutoRule autoRule) {
+        if (autoRule.getDeletedAt() != null) {
+            throw new WebException(ErrorCode.RULE_NOT_FOUND);
+        }
+    }
+
+    private boolean shouldResetBaseline(AutoRuleUpdateRequest request, AutoRule autoRule) {
+        boolean enablingRule = Boolean.TRUE.equals(request.getActive()) && !Boolean.TRUE.equals(autoRule.getActive());
+        boolean operatorChanged = request.getOperator() != null && request.getOperator() != autoRule.getOperator();
+        boolean thresholdChanged = request.getThresh() != null
+                && Double.compare(request.getThresh(), autoRule.getThresh()) != 0;
+        boolean targetChanged = request.getTargetValue() != null
+                && !autoRuleMapper
+                .normalizeTargetValue(autoRule.getDevice().getDeviceType(), request.getTargetValue())
+                .equals(autoRule.getTargetValue());
+
+        return enablingRule || operatorChanged || thresholdChanged || targetChanged;
+    }
+
+    private LocalDateTime getLatestSensorTimestamp(String sensorId) {
+        return sensorDataRepository
+                .findTopById_SensorIdOrderById_TimestampDesc(sensorId)
+                .map(data -> data.getId().getTimestamp())
+                .orElse(null);
     }
 }

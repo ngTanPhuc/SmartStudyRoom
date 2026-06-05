@@ -39,4 +39,5 @@ public class AutoRule {
     LocalDateTime lastTriggerAt;
     LocalDateTime lastEvaluatedAt;
     Integer coolDownSeconds;
+    LocalDateTime deletedAt;
 }

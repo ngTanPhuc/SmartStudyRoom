@@ -1,6 +1,6 @@
 package com.aiot.backend.service;
 
-import com.aiot.backend.dto.IotEdge.SensorDataRequest;
+import com.aiot.backend.dto.iot.SensorDataRequest;
 import com.aiot.backend.dto.response.SensorDataResponse;
 import com.aiot.backend.dto.response.SensorResponse;
 import com.aiot.backend.entity.Sensor;

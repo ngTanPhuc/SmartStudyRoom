@@ -1,145 +1,72 @@
 # Smart Study Room
 
-Hệ thống quản lý thiết bị IoT cho phòng học thông minh.
+Hệ thống quản lý phòng học thông minh gồm backend Spring Boot, frontend React, AI service FastAPI và IoT gateway Python.
 
-## Kiến trúc
-
-Luồng tương tác chính:
+## Cấu trúc
 
 ```text
-sensor_node.py <-> gateway.py <-> Backend <-> Frontend
-                                  |
-                                  +-> ai-service
-                                  +-> MySQL
+backend/     Spring Boot API, MySQL, JWT, WebSocket, auto rules
+frontend/    React + Vite UI
+ai-service/  FastAPI intent classification service
+iot-edge/    Serial gateway and IoT flow simulators
+docs/        Architecture, setup, env, API notes
+infra/       Local infrastructure files
+scripts/     Developer convenience scripts
 ```
 
-Các thành phần:
+## Chạy nhanh
 
-- `backend/`: Spring Boot API, lưu dữ liệu MySQL, điều khiển thiết bị, auto rule, speech command.
-- `front-end/`: Vite React UI, kết nối trực tiếp với backend Spring Boot.
-- `ai-service/`: FastAPI service dự đoán intent từ câu lệnh tiếng Việt.
-- `iot-edge/`: gateway đọc sensor từ serial, gửi dữ liệu lên backend, nhận lệnh điều khiển từ backend.
+1. Copy env mẫu và điền giá trị local:
 
-## Yêu cầu môi trường
-
-- Java JDK 19
-- Maven
-- MySQL
-- Python 3.11+
-- Thiết bị IoT qua serial nếu chạy gateway thật
-
-## Cấu hình database
-
-Tạo database MySQL:
-
-```sql
-CREATE DATABASE smart_study_room;
+```powershell
+Copy-Item backend\.env.example backend\.env
+Copy-Item frontend\.env.example frontend\.env
+Copy-Item ai-service\.env.example ai-service\.env
+Copy-Item iot-edge\.env.example iot-edge\.env
 ```
 
-Kiểm tra cấu hình trong `backend/src/main/resources/application.yaml`:
+2. Tạo database MySQL `smart_study_room`, hoặc chạy MySQL local bằng Docker Compose:
 
-```yaml
-spring:
-  datasource:
-    url: "jdbc:mysql://localhost:3306/smart_study_room"
-    username: root
-    password: your_password
+```powershell
+docker compose -f infra\docker-compose.local.yml up -d mysql
 ```
 
-## Chạy backend
+3. Chạy backend:
 
 ```powershell
 cd backend
 mvn spring-boot:run
 ```
 
-Backend mặc định chạy tại:
-
-```text
-http://localhost:8080
-```
-
-## Chạy frontend
-
-```powershell
-cd front-end
-npm install
-npm run dev
-```
-
-Frontend mặc định chạy tại:
-
-```text
-http://localhost:3000
-```
-
-Frontend mặc định gọi backend tại `http://localhost:8080`. Nếu cần đổi URL backend:
-
-```powershell
-$env:VITE_API_BASE_URL="http://localhost:8080"
-npm run dev
-```
-
-Các luồng đã nối với backend:
-
-- Đăng ký: `POST /auth/register`, sau đó tự login.
-- Đăng nhập: `POST /auth/login`, sau đó lấy user qua `GET /users/my-info`.
-- Dashboard sensor: `GET /users/{userId}/sensors`.
-- Điều khiển thiết bị: `POST /users/{userId}/devices/{deviceId}/control`.
-- Lịch sử: `GET /users/{userId}/commands`.
-- Biểu đồ: lấy lịch sử sensor qua `GET /users/{userId}/sensors/{sensorId}/data`.
-
-Build nhanh:
-
-```powershell
-cd backend
-mvn package -DskipTests
-```
-
-## Chạy AI service
+4. Chạy AI service:
 
 ```powershell
 cd ai-service
-python -m venv venv
-.\venv\Scripts\activate
+python -m venv .venv
+.\.venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn service:app --host 0.0.0.0 --port 8000
 ```
 
-Kiểm tra health:
+5. Chạy frontend:
 
-```text
-http://localhost:8000/health
+```powershell
+cd frontend
+npm install
+npm run dev
 ```
 
-Endpoint dự đoán:
-
-```text
-POST http://localhost:8000/predict
-```
-
-Body mẫu:
-
-```json
-{
-  "rawtext": "bật quạt"
-}
-```
-
-## Chạy gateway thật
-
-Gateway đọc serial từ thiết bị IoT và subscribe command từ backend.
-
-Nếu chạy lần đầu, cài dependency cho `iot-edge`:
+6. Chạy IoT edge và các script test:
 
 ```powershell
 cd iot-edge
-python -m pip uninstall serial -y
 python -m pip install -r requirements.txt
 cd ..
 ```
 
-Các biến môi trường thường dùng:
+### Script 1: `gateway.py`
+
+Dùng khi có thiết bị thật đang kết nối qua serial. Script này đọc dữ liệu sensor từ serial, gửi lên backend, đồng thời lắng nghe lệnh điều khiển từ backend qua WebSocket rồi gửi lại xuống thiết bị.
 
 ```powershell
 $env:SMART_ROOM_USER_ID="c7ab5c64-cee4-4ef6-9b2e-1f71824c0920"
@@ -147,111 +74,95 @@ $env:SMART_ROOM_SERIAL_PORT="COM3"
 $env:SMART_ROOM_BAUDRATE="115200"
 $env:SMART_ROOM_BACKEND_URL="http://localhost:8080"
 $env:SMART_ROOM_WS_URL="ws://localhost:8080/ws"
-```
-
-Chạy gateway:
-
-```powershell
 python iot-edge\gateway.py
 ```
 
-## Test luồng sensor không cần thiết bị thật
+Thiết bị cần gửi serial line theo format:
 
-Script này random 3 sensor `TEMPERATURE`, `HUMIDITY`, `LIGHT` và gửi lên backend mỗi 5 giây.
+```text
+T:28.5
+H:60
+L:400
+```
+
+Gateway map dữ liệu thành:
+
+```text
+TEMPERATURE, HUMIDITY, LIGHT
+```
+
+Khi backend gửi command, gateway map xuống serial:
+
+```text
+FAN value    -> S<value>
+LIGHT value  -> 1 nếu value > 0, ngược lại 0
+```
+
+### Script 2: `test_sensor_flow.py`
+
+Dùng khi chưa có thiết bị thật. Script này random dữ liệu `TEMPERATURE`, `HUMIDITY`, `LIGHT` và gửi lên backend định kỳ.
 
 ```powershell
 $env:SMART_ROOM_USER_ID="c7ab5c64-cee4-4ef6-9b2e-1f71824c0920"
+$env:SMART_ROOM_BACKEND_URL="http://localhost:8080"
+$env:SMART_ROOM_SENSOR_INTERVAL="5"
 python iot-edge\test_sensor_flow.py
 ```
 
-Đổi chu kỳ gửi:
+Output mẫu:
 
-```powershell
-$env:SMART_ROOM_SENSOR_INTERVAL="2"
-python iot-edge\test_sensor_flow.py
+```text
+Sending random sensor data to http://localhost:8080/iot/sensor-data every 5s
+sent TEMPERATURE: 28.31
+sent HUMIDITY: 64.2
+sent LIGHT: 78.5
 ```
 
-## Test luồng điều khiển device không cần thiết bị thật
+### Script 3: `test_device_control_flow.py`
 
-Script này lắng nghe command từ backend qua WebSocket STOMP và in trạng thái thiết bị.
+Dùng khi chưa có thiết bị thật nhưng muốn test luồng điều khiển. Script này lắng nghe `/topic/commands` từ backend và in trạng thái thiết bị giả lập.
 
 ```powershell
 $env:SMART_ROOM_USER_ID="c7ab5c64-cee4-4ef6-9b2e-1f71824c0920"
+$env:SMART_ROOM_WS_URL="ws://localhost:8080/ws"
 python iot-edge\test_device_control_flow.py
 ```
 
-Khi frontend/backend gửi lệnh điều khiển, terminal sẽ hiển thị trạng thái:
+Sau đó điều khiển đèn/quạt từ frontend. Terminal sẽ in dạng:
 
 ```text
-received command: FAN -> 70
-device states | FAN=70% | LIGHT=OFF
+received command: FAN -> 66
+device states | FAN=66% | LIGHT=OFF
 ```
 
-## API chính
+Có thể chạy qua helper scripts:
 
-Đăng ký user:
+```powershell
+.\scripts\dev.ps1 -Service sensor
+.\scripts\dev.ps1 -Service commands
+```
+
+Chạy kiểm tra nhanh:
+
+```powershell
+.\scripts\test.ps1
+```
+
+## Tài liệu
+
+- Kiến trúc: `docs/architecture.md`
+- Setup chi tiết: `docs/setup.md`
+- Biến môi trường: `docs/env.md`
+- API chính: `docs/api.md`
+
+## Ghi chú bảo mật
+
+Secret cũ trong cấu hình local đã được thay bằng biến môi trường. Khi chạy thật, hãy dùng `JWT_SIGNER_KEY` và mật khẩu database mới; không tái sử dụng giá trị đã từng nằm trong repository.
+
+Dự án này phục vụ mục đích học tập nên signer key dưới đây được công khai để mọi người có thể chạy local giống nhau:
 
 ```text
-POST /auth/register
+JWT_SIGNER_KEY=5536d9c7d3a5520637881025e26519cce4c8a3adb105f10fbe789a6bc17e42e9
 ```
 
-Khi đăng ký thành công, backend tự tạo:
-
-- 3 sensor: `HUMIDITY`, `LIGHT`, `TEMPERATURE`
-- 2 device: `FAN`, `LIGHT`
-
-Lấy danh sách sensor:
-
-```text
-GET /users/{userId}/sensors
-```
-
-Lấy dữ liệu sensor:
-
-```text
-GET /users/{userId}/sensors/{sensorId}/data
-```
-
-Điều khiển thủ công:
-
-```text
-POST /users/{userId}/devices/{deviceId}/control
-```
-
-Body:
-
-```json
-{
-  "targetValue": 100
-}
-```
-
-Điều khiển giọng nói:
-
-```text
-POST /users/{userId}/speech-inputs/predict
-```
-
-Body:
-
-```json
-{
-  "rawtext": "bật đèn"
-}
-```
-
-Auto rule:
-
-```text
-GET  /users/{userId}/auto-rules
-POST /users/{userId}/auto-rules
-PUT  /users/{userId}/auto-rules/{autoRuleId}
-DELETE /users/{userId}/auto-rules/{autoRuleId}
-```
-
-## Ghi chú
-
-- `SMART_ROOM_USER_ID` mặc định nên dùng user test `c7ab5c64-cee4-4ef6-9b2e-1f71824c0920`, hoặc đổi sang id user khác đã đăng ký trong backend.
-- Nếu không có token JWT, endpoint sensor test vẫn cần `userId` trong body để backend map sensor đúng user.
-- Auto rule được backend kiểm tra mỗi 5 giây.
-- Không commit `venv/`, `target/`, `.env`, log, file local secret.
+Key này chỉ dùng cho demo/local learning, không dùng cho production hoặc dữ liệu thật.

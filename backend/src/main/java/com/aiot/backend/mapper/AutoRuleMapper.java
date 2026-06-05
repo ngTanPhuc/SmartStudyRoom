@@ -8,6 +8,7 @@ import com.aiot.backend.entity.Command;
 import com.aiot.backend.entity.Device;
 import com.aiot.backend.entity.Sensor;
 import com.aiot.backend.enums.CommandType;
+import com.aiot.backend.enums.DeviceType;
 import com.aiot.backend.enums.Operator;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +31,7 @@ public class AutoRuleMapper {
                 .user(sensor.getUser())
                 .sensor(sensor)
                 .device(device)
-                .targetValue(request.getTargetValue())
+                .targetValue(normalizeTargetValue(device.getDeviceType(), request.getTargetValue()))
                 .lastTriggerAt(null)
                 .lastEvaluatedAt(null)
                 .coolDownSeconds(5)
@@ -64,14 +65,26 @@ public class AutoRuleMapper {
     public AutoRule toEntity(AutoRuleUpdateRequest request, AutoRule autoRule) {
         if (request.getOperator() != null) autoRule.setOperator(request.getOperator());
         if (request.getActive() != null) {
+            boolean wasActive = Boolean.TRUE.equals(autoRule.getActive());
             autoRule.setActive(request.getActive());
-            if (request.getActive()) autoRule.setLastTriggerAt(null);
+            if (!wasActive && request.getActive()) autoRule.setLastTriggerAt(null);
         }
         if (request.getThresh() != null) autoRule.setThresh(request.getThresh());
-        if (request.getTargetValue() != null) autoRule.setTargetValue(request.getTargetValue());
+        if (request.getTargetValue() != null) {
+            autoRule.setTargetValue(normalizeTargetValue(autoRule.getDevice().getDeviceType(), request.getTargetValue()));
+        }
         autoRule.setDescription(buildDescription(autoRule));
         return autoRule;
     }
+
+    public Integer normalizeTargetValue(DeviceType deviceType, Integer targetValue) {
+        int clamped = Math.max(0, Math.min(100, targetValue));
+        if (deviceType == DeviceType.LIGHT) {
+            return clamped > 0 ? 100 : 0;
+        }
+        return clamped;
+    }
+
     public AutoRuleResponse toResponse(AutoRule autoRule) {
         return AutoRuleResponse.builder()
                 .id(autoRule.getId())
@@ -82,6 +95,7 @@ public class AutoRuleMapper {
                 .sensorResponse(sensorMapper.toResponse(autoRule.getSensor()))
                 .deviceResponse(deviceMapper.toResponse(autoRule.getDevice()))
                 .targetValue(autoRule.getTargetValue())
+                .deletedAt(autoRule.getDeletedAt())
                 .build();
     }
 

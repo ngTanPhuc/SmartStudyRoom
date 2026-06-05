@@ -1,6 +1,6 @@
 package com.aiot.backend.controller;
 
-import com.aiot.backend.dto.IotEdge.SensorDataRequest;
+import com.aiot.backend.dto.iot.SensorDataRequest;
 import com.aiot.backend.dto.response.ApiResponse;
 import com.aiot.backend.exception.ErrorCode;
 import com.aiot.backend.exception.WebException;

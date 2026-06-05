@@ -11,6 +11,6 @@ import java.util.Optional;
 public interface AutoRuleRepository extends JpaRepository<AutoRule, String> {
     Optional<AutoRule> findByIdAndUser_Id(String autoRuleId, String userId);
     List<AutoRule> findBySensor_Id(String sensorId);
-    List<AutoRule> findByUser_Id(String userId);
-    List<AutoRule> findByActiveTrue();
+    List<AutoRule> findByUser_IdAndDeletedAtIsNull(String userId);
+    List<AutoRule> findByActiveTrueAndDeletedAtIsNull();
 }

@@ -1,0 +1,11 @@
+export { default } from '@/shared/api/httpClient';
+export * from '@/shared/api/backendTypes';
+export { authApi } from '@/features/auth/api';
+export { feedApi } from '@/features/feeds/api';
+export { deviceApi } from '@/features/devices/api';
+export { sensorApi } from '@/features/sensors/api';
+export { autoRuleApi } from '@/features/auto-rules/api';
+export { speechApi } from '@/features/speech/api';
+export { historyApi } from '@/features/history/api';
+export { adminApi } from '@/features/admin/api';
+export { autoModeApi } from '@/features/auto-mode/api';

@@ -1,6 +1,7 @@
 package com.aiot.backend.service;
 
-import com.aiot.backend.dto.IotEdge.SpeechInputResult;
+import com.aiot.backend.client.AiPredictionClient;
+import com.aiot.backend.dto.iot.SpeechInputResult;
 import com.aiot.backend.dto.request.SpeechInputRequest;
 import com.aiot.backend.dto.response.SpeechInputResponse;
 import com.aiot.backend.entity.Command;
@@ -18,10 +19,7 @@ import com.aiot.backend.repository.SpeechInputRepository;
 import lombok.AccessLevel;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.List;
 
 @Service
@@ -35,20 +33,18 @@ public class SpeechInputService {
     SpeechInputMapper speechInputMapper;
     DeviceRepository deviceRepository;
     UserService userService;
-
-    WebClient webClient;
+    AiPredictionClient aiPredictionClient;
 
     public SpeechInputService(CommandRepository commandRepository, CommandService commandService, SpeechInputRepository speechInputRepository,
-                              SpeechInputMapper speechInputMapper, DeviceRepository deviceRepository, UserService userService) {
+                              SpeechInputMapper speechInputMapper, DeviceRepository deviceRepository, UserService userService,
+                              AiPredictionClient aiPredictionClient) {
         this.commandRepository = commandRepository;
         this.commandService = commandService;
         this.speechInputRepository = speechInputRepository;
         this.speechInputMapper = speechInputMapper;
         this.deviceRepository = deviceRepository;
         this.userService = userService;
-        this.webClient = WebClient.builder()
-                .baseUrl("http://localhost:8000")
-                .build();
+        this.aiPredictionClient = aiPredictionClient;
     }
 
     public List<SpeechInputResponse> getSpeechInputs(String userId) {
@@ -158,22 +154,7 @@ public class SpeechInputService {
     }
 
     public SpeechInputResult predict(SpeechInputRequest request) {
-        SpeechInputResult result = webClient.post()
-                .uri("/predict")
-                .bodyValue(request)
-                .retrieve()
-                .onStatus(status -> status.is5xxServerError(),
-                        res -> Mono.error(new WebException(ErrorCode.ML_SERVICE_UNAVAILABLE)))
-                .onStatus(status -> status.is4xxClientError(),
-                        res -> Mono.error(new WebException(ErrorCode.ML_BAD_REQUEST)))
-                .bodyToMono(SpeechInputResult.class)
-                .timeout(Duration.ofSeconds(2))
-                .onErrorMap(ex -> {
-                    if (ex instanceof WebException) return ex;
-                    return new WebException(ErrorCode.ML_TIMEOUT);
-                })
-                .block();
-        return result;
+        return aiPredictionClient.predict(request);
     }
 
     private record Intent(DeviceType deviceType, SpeechAction action) {}

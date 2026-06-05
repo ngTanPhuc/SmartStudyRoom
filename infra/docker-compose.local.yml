@@ -1,0 +1,15 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: smart-study-room-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: smart_study_room
+      MYSQL_ROOT_PASSWORD: smart_room_local_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - smart-study-room-mysql:/var/lib/mysql
+
+volumes:
+  smart-study-room-mysql:

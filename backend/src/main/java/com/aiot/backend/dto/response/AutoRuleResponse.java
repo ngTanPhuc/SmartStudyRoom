@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Builder(toBuilder = true)
 @Getter
 @Setter
@@ -17,4 +19,5 @@ public class AutoRuleResponse {
     SensorResponse sensorResponse;
     DeviceResponse deviceResponse;
     Integer targetValue;
+    LocalDateTime deletedAt;
 }

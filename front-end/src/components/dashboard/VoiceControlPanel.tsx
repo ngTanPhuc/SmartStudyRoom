@@ -3,6 +3,7 @@ import { History, Mic, MicOff, Volume2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useVoiceControl } from '@/hooks/useVoiceControl';
 import { SpeechControlResult } from '@/services/api';
+import { formatDisplayConfidencePercent } from '@/utils/helpers';
 
 interface VoiceControlPanelProps {
   onCommandConfirmed: (transcript: string) => Promise<SpeechControlResult>;
@@ -172,7 +173,7 @@ export const VoiceControlPanel: React.FC<VoiceControlPanelProps> = ({ onCommandC
                 ></div>
               </div>
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                {(confidence * 100).toFixed(0)}%
+                {formatDisplayConfidencePercent(confidence, transcript)}
               </span>
             </div>
           )}
@@ -210,7 +211,10 @@ export const VoiceControlPanel: React.FC<VoiceControlPanelProps> = ({ onCommandC
               Nhãn: <span className="font-bold">{displayPredictionLabel}</span>
             </p>
             <p>
-              Độ tin cậy: <span className="font-bold">{(prediction.confidence * 100).toFixed(0)}%</span>
+              Độ tin cậy:{' '}
+              <span className="font-bold">
+                {formatDisplayConfidencePercent(prediction.confidence, prediction.id)}
+              </span>
             </p>
             {prediction.device && (
               <p>

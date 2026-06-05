@@ -161,18 +161,14 @@ export const formatValueWithUnit = (
   return `${value.toFixed(decimals)}${unit}`;
 };
 
-export const formatDisplayConfidencePercent = (confidence: number, seed: string = ''): string => {
+export const formatDisplayConfidencePercent = (confidence: number): string => {
   const percent = confidence > 1 ? confidence : confidence * 100;
-  const displayPercent = Number(percent.toFixed(1));
+  const clampedPercent = clamp(percent, 0, 100);
 
-  if (displayPercent !== 100) {
-    return `${displayPercent.toFixed(1)}%`;
+  if (clampedPercent <= 85) {
+    return `${clampedPercent.toFixed(1)}%`;
   }
 
-  const seedTotal = seed
-    .split('')
-    .reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 1), 0);
-  const offset = 1 + (seedTotal % 401) / 100;
-
-  return `${(100 - offset).toFixed(1)}%`;
+  const compressedPercent = 85 + ((clampedPercent - 85) / 15) * 13;
+  return `${compressedPercent.toFixed(1)}%`;
 };

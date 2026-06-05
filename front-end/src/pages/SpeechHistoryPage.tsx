@@ -130,7 +130,7 @@ export const SpeechHistoryPage: React.FC = () => {
             <p className="text-sm text-purple-700 dark:text-purple-300">Confidence trung bình</p>
             <div className="mt-2 flex items-end justify-between">
               <span className="text-3xl font-bold text-purple-900 dark:text-purple-100">
-                {formatDisplayConfidencePercent(averageConfidence, 'average-confidence')}
+                {formatDisplayConfidencePercent(averageConfidence)}
               </span>
               <BarChart3 className="w-6 h-6 text-purple-600 dark:text-purple-300" />
             </div>
@@ -229,7 +229,7 @@ export const SpeechHistoryPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`rounded-full px-3 py-1.5 text-sm font-bold ${confidenceTone(confidence)}`}>
-                          {formatDisplayConfidencePercent(confidence, item.id)}
+                          {formatDisplayConfidencePercent(confidence)}
                         </span>
                       </td>
                     </tr>

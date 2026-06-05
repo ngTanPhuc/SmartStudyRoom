@@ -163,16 +163,16 @@ export const formatValueWithUnit = (
 
 export const formatDisplayConfidencePercent = (confidence: number, seed: string = ''): string => {
   const percent = confidence > 1 ? confidence : confidence * 100;
-  const roundedPercent = Math.round(percent);
+  const displayPercent = Number(percent.toFixed(1));
 
-  if (roundedPercent !== 100) {
-    return `${roundedPercent}%`;
+  if (displayPercent !== 100) {
+    return `${displayPercent.toFixed(1)}%`;
   }
 
   const seedTotal = seed
     .split('')
     .reduce((sum, char, index) => sum + char.charCodeAt(0) * (index + 1), 0);
-  const offset = (seedTotal % 5) + 1;
+  const offset = 1 + (seedTotal % 401) / 100;
 
-  return `${100 - offset}%`;
+  return `${(100 - offset).toFixed(1)}%`;
 };

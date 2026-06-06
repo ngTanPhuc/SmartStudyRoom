@@ -77,7 +77,7 @@ def main():
             on_error=on_error,
             on_close=on_close,
         )
-        ws.run_forever()
+        ws.run_forever(suppress_origin=True)
         print("reconnecting in 2s...")
         time.sleep(2)
 

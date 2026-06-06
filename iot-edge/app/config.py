@@ -17,8 +17,10 @@ class GatewayConfig:
         return cls(
             serial_port=os.getenv("SMART_ROOM_SERIAL_PORT", "COM3"),
             baudrate=int(os.getenv("SMART_ROOM_BAUDRATE", "115200")),
-            backend_url=os.getenv("SMART_ROOM_BACKEND_URL", "http://localhost:8080"),
-            ws_url=os.getenv("SMART_ROOM_WS_URL", "ws://localhost:8080/ws"),
+            # backend_url=os.getenv("SMART_ROOM_BACKEND_URL", "http://localhost:8080"),
+            backend_url=os.getenv("SMART_ROOM_BACKEND_URL", "https://smartstudyroom-production.up.railway.app"),
+            # ws_url=os.getenv("SMART_ROOM_WS_URL", "ws://localhost:8080/ws"),
+            ws_url=os.getenv("SMART_ROOM_WS_URL", "wss://smartstudyroom-production.up.railway.app/ws"),
             user_id=os.getenv("SMART_ROOM_USER_ID", "c7ab5c64-cee4-4ef6-9b2e-1f71824c0920"),
             backend_token=os.getenv("SMART_ROOM_BACKEND_TOKEN", ""),
             debug_serial=os.getenv("SMART_ROOM_DEBUG_SERIAL", "1") != "0",

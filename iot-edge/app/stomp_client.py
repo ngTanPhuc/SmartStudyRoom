@@ -64,6 +64,6 @@ class CommandSubscriber:
                 on_error=self.on_error,
                 on_close=self.on_close,
             )
-            ws.run_forever()
+            ws.run_forever(suppress_origin=True)
             print("Reconnecting WebSocket in 2s...")
             time.sleep(2)

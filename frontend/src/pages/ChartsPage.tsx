@@ -132,7 +132,7 @@ export const ChartsPage: React.FC = () => {
     labels,
     datasets: [
       {
-        label: 'Ánh sáng (lux)',
+        label: 'Ánh sáng (%)',
         data: lightData,
         borderColor: '#d97706',
         backgroundColor: 'rgba(217, 119, 6, 0.1)',

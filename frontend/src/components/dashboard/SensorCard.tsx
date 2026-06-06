@@ -32,7 +32,7 @@ const sensorConfig = {
   light: {
     icon: Sun,
     label: 'Ánh sáng',
-    unit: ' lux',
+    unit: ' %',
     gradient: 'from-orange-500 via-orange-400 to-orange-300',
     glowColor: 'shadow-glow-orange',
     iconBg: 'bg-orange-500/20',

@@ -47,7 +47,7 @@ export const SENSOR_CONFIG: Record<
   },
   LIGHT: {
     label: 'Ánh sáng',
-    unit: 'lux',
+    unit: '%',
     icon: SunMedium,
     tone: 'text-amber-600 dark:text-amber-300',
     softTone: 'bg-amber-50 border-amber-100 dark:bg-amber-950/30 dark:border-amber-900',

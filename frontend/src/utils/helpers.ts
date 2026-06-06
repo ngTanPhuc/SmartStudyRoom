@@ -52,9 +52,9 @@ export const isValueOptimal = (
   value: number
 ): boolean => {
   const thresholds = {
-    temperature: { min: 18, max: 28 },
-    humidity: { min: 40, max: 70 },
-    light: { min: 300, max: 700 },
+    temperature: { min: 20, max: 28 },
+    humidity: { min: 40, max: 60 },
+    light: { min: 40, max: 60 },
   };
   
   const { min, max } = thresholds[type];
